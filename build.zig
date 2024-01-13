@@ -239,6 +239,8 @@ pub fn build(b: *Build) !void {
         b.getInstallStep().dependOn(&ldc.step);
     }
     buildShaders(b);
+    const ll = buildImgui(b, .{ .target = target, .optimize = optimize });
+    b.installArtifact(ll);
 }
 
 // a separate step to compile shaders, expects the shader compiler in ../sokol-tools-bin/
@@ -434,7 +436,8 @@ fn ldcBuild(b: *Build, lib_sokol: *CompileStep, options: DCompileStep) !*RunStep
         break;
     }
 
-    // link flags
+    // linker flags
+
     // GNU LD
     if (options.target.result.os.tag == .linux and !options.zig_cc) {
         try cmds.append("-L--no-as-needed");
@@ -537,4 +540,47 @@ const DCompileStep = struct {
 
 fn packagePath(b: *Build, package: *Build.Dependency) []const u8 {
     return package.path("").getPath(b);
+}
+
+fn buildImgui(b: *Build, options: struct { target: Build.ResolvedTarget, optimize: std.builtin.OptimizeMode }) *CompileStep {
+    const imgui_cpp = b.dependency("imgui", .{});
+    const imgui_cpp_dir = imgui_cpp.path("").getPath(b);
+    const cimgui = b.dependency("cimgui", .{});
+    // const cimgui_dir = cimgui.path("").getPath(b);
+
+    const lib = b.addStaticLibrary(.{
+        .name = "imgui",
+        .target = options.target,
+        .optimize = options.optimize,
+    });
+    lib.addIncludePath(imgui_cpp.path(""));
+    lib.addIncludePath(cimgui.path(""));
+    lib.addCSourceFiles(.{
+        .files = &.{
+            b.pathJoin(&.{ imgui_cpp_dir, "imgui.cpp" }),
+            b.pathJoin(&.{ imgui_cpp_dir, "imgui_draw.cpp" }),
+            b.pathJoin(&.{ imgui_cpp_dir, "imgui_demo.cpp" }),
+            b.pathJoin(&.{ imgui_cpp_dir, "imgui_widgets.cpp" }),
+            b.pathJoin(&.{ imgui_cpp_dir, "imgui_tables.cpp" }),
+            // b.pathJoin(&.{ cimgui_dir, "cimgui.cpp" }),
+        },
+        .flags = &.{
+            "-Wall",
+            "-Wformat",
+            "-Wpedantic",
+            "-Wextra",
+            "-fno-exceptions",
+            "-fno-rtti",
+        },
+    });
+    lib.root_module.sanitize_c = false;
+
+    // https://github.com/ziglang/zig/issues/5312
+    if (lib.rootModuleTarget().abi != .msvc) {
+        // llvm-libcxx + llvm-libunwind + os-libc
+        lib.linkLibCpp();
+    } else {
+        lib.linkLibC();
+    }
+    return lib;
 }

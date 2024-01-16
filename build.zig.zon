@@ -13,12 +13,12 @@
         //     .hash = "1220194ac6476adaed11b30299a8abdd593eb7ae6d368bf6832d7fe6a604f12cae4f",
         // },
         .cimgui = .{
-            .url = "git+https://github.com/cimgui/cimgui#831f155f605c0ef3ad2e2bc20dae298cdb6f5779",
-            .hash = "1220abb48ac358308cc4db0603dc92dcc1452b9a99026c7dbca0766f88424a4725c6",
+            .url = "git+https://github.com/kassane/cimgui#f5b64afa65549d5e5ca65b003a443030ead23c9b",
+            .hash = "1220e6183fb9559dbfafe58d7fab20f1c330bee32342205815aa10553134ff9f9302",
         },
         .imgui = .{
-            .url = "git+https://github.com/ocornut/imgui#6228c2e1ec7ef21ca1809579c055ed34540dedb0",
-            .hash = "12205a78270c1c77b8996639cb35adb6b63265aa31143f51ee207cb4fe90afc7d55d",
+            .url = "git+https://github.com/ocornut/imgui#5fdcdf7080aade03b30f742dd9369172460fcfd7",
+            .hash = "12202af0db41b79a4c7904950269b5e33b7d48f50aae042e334cb8d717a5a2caf48d",
         },
     },
 }

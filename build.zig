@@ -149,6 +149,7 @@ pub fn buildLibSokol(b: *Build, options: LibSokolOptions) !*CompileStep {
         csrc_root ++ "sokol_glue.c",
         csrc_root ++ "sokol_debugtext.c",
         csrc_root ++ "sokol_shape.c",
+        csrc_root ++ "sokol_imgui.c",
     };
     for (csources) |csrc| {
         lib.addCSourceFile(.{
@@ -156,6 +157,11 @@ pub fn buildLibSokol(b: *Build, options: LibSokolOptions) !*CompileStep {
             .flags = cflags,
         });
     }
+    const cimgui = buildImgui(b, .{ .target = options.target, .optimize = options.optimize });
+    for (cimgui.root_module.include_dirs.items) |dir| {
+        try lib.root_module.include_dirs.append(b.allocator, dir);
+    }
+    lib.linkLibrary(cimgui);
     if (sharedlib)
         b.installArtifact(lib);
     return lib;
@@ -219,6 +225,7 @@ pub fn build(b: *Build) !void {
         // "debugtext-userfont",
         // "shapes",
         "user-data",
+        "imgui",
     };
     b.getInstallStep().name = "sokol library";
     inline for (examples) |example| {
@@ -239,8 +246,6 @@ pub fn build(b: *Build) !void {
         b.getInstallStep().dependOn(&ldc.step);
     }
     buildShaders(b);
-    const ll = buildImgui(b, .{ .target = target, .optimize = optimize });
-    b.installArtifact(ll);
 }
 
 // a separate step to compile shaders, expects the shader compiler in ../sokol-tools-bin/
@@ -502,6 +507,22 @@ fn ldcBuild(b: *Build, lib_sokol: *CompileStep, options: DCompileStep) !*RunStep
     // run the command
     var ldc_exec = b.addSystemCommand(cmds.items);
     ldc_exec.addArtifactArg(lib_sokol);
+    var it = lib_sokol.root_module.iterateDependencies(lib_sokol, false);
+    while (it.next()) |item| {
+        for (item.module.link_objects.items) |link_object| {
+            switch (link_object) {
+                .other_step => |compile_step| {
+                    switch (compile_step.kind) {
+                        .lib => {
+                            ldc_exec.addArtifactArg(compile_step);
+                        },
+                        else => {},
+                    }
+                },
+                else => {},
+            }
+        }
+    }
     ldc_exec.setName(options.name);
 
     const example_run = b.addSystemCommand(&.{b.pathJoin(&.{ b.install_path, "bin", options.name })});
@@ -546,41 +567,49 @@ fn buildImgui(b: *Build, options: struct { target: Build.ResolvedTarget, optimiz
     const imgui_cpp = b.dependency("imgui", .{});
     const imgui_cpp_dir = imgui_cpp.path("").getPath(b);
     const cimgui = b.dependency("cimgui", .{});
-    // const cimgui_dir = cimgui.path("").getPath(b);
+    const cimgui_dir = cimgui.path("").getPath(b);
 
-    const lib = b.addStaticLibrary(.{
-        .name = "imgui",
+    const libimgui = b.addStaticLibrary(.{
+        .name = "cimgui",
         .target = options.target,
         .optimize = options.optimize,
     });
-    lib.addIncludePath(imgui_cpp.path(""));
-    lib.addIncludePath(cimgui.path(""));
-    lib.addCSourceFiles(.{
+    if (libimgui.linkage == .static)
+        libimgui.pie = true
+    else
+        libimgui.root_module.pic = true;
+    libimgui.addIncludePath(.{ .path = cimgui_dir });
+    libimgui.addIncludePath(.{ .path = imgui_cpp_dir });
+    libimgui.addCSourceFiles(.{
         .files = &.{
+            b.pathJoin(&.{ cimgui_dir, "cimgui.cpp" }),
             b.pathJoin(&.{ imgui_cpp_dir, "imgui.cpp" }),
             b.pathJoin(&.{ imgui_cpp_dir, "imgui_draw.cpp" }),
             b.pathJoin(&.{ imgui_cpp_dir, "imgui_demo.cpp" }),
             b.pathJoin(&.{ imgui_cpp_dir, "imgui_widgets.cpp" }),
             b.pathJoin(&.{ imgui_cpp_dir, "imgui_tables.cpp" }),
-            // b.pathJoin(&.{ cimgui_dir, "cimgui.cpp" }),
         },
         .flags = &.{
             "-Wall",
-            "-Wformat",
-            "-Wpedantic",
             "-Wextra",
-            "-fno-exceptions",
+            "-Wformat",
             "-fno-rtti",
+            "-fno-exceptions",
+            "-Werror",
+            "-DIMGUI_DISABLE_OBSOLETE_FUNCTIONS=1",
+            "-fno-threadsafe-statics",
         },
     });
-    lib.root_module.sanitize_c = false;
+    libimgui.root_module.sanitize_c = false;
+    if (libimgui.rootModuleTarget().os.tag == .windows)
+        libimgui.linkSystemLibrary2("imm32", .{ .use_pkg_config = .no });
 
     // https://github.com/ziglang/zig/issues/5312
-    if (lib.rootModuleTarget().abi != .msvc) {
+    if (libimgui.rootModuleTarget().abi != .msvc) {
         // llvm-libcxx + llvm-libunwind + os-libc
-        lib.linkLibCpp();
+        libimgui.linkLibCpp();
     } else {
-        lib.linkLibC();
+        libimgui.linkLibC();
     }
-    return lib;
+    return libimgui;
 }

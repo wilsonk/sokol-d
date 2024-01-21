@@ -3,8 +3,7 @@
 module sokol.imgui;
 
 import core.stdc.stdint;
-import core.stdc.stdio;
-import core.stdc.stdarg;
+import core.stdc.stdarg : va_list;
 import sapp = sokol.app;
 import sg = sokol.gfx;
 
@@ -1493,7 +1492,16 @@ struct StbTexteditRow
     int num_chars;
 }
 
-alias ImFileHandle = _IO_FILE*;
+static if({
+	version(WebAssembly) return false;
+	else version(WASI) return false;
+	else return true;
+}){
+	import core.stdc.stdio: FILE;
+	alias ImFileHandle = FILE*;
+}else{
+	alias ImFileHandle = void*;
+}
 
 struct ImVec1
 {

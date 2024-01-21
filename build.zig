@@ -429,12 +429,6 @@ pub fn ldcBuildStep(b: *Build, options: DCompileStep) !*RunStep {
             try cmds.append("-link-defaultlib-shared");
         }
 
-        // C include path
-        for (lib_sokol.root_module.include_dirs.items) |include_dir| {
-            const path = include_dir.path_system.getPath(b);
-            try cmds.append(b.fmt("-P-I{s}", .{path}));
-        }
-
         // library paths
         for (lib_sokol.root_module.lib_paths.items) |libpath| {
             if (libpath.path.len > 0) // skip empty paths

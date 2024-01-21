@@ -2,16 +2,13 @@
     .name = "sokol-d",
     .version = "0.1.0",
     .min_zig_version = "0.12.0",
-    .paths = .{""},
+    .paths = .{
+        "src",
+        "build.zig",
+        "LICENSE",
+        "Readme.md",
+    },
     .dependencies = .{
-        // .emsdk = .{
-        //     .url = "git+https://github.com/emscripten-core/emsdk#0bbae74935d57ff41739648c12cf90b56668398f",
-        //     .hash = "1220f1340cd871b444021c600661f921f96091ce0815fa43008528f4844cece7e245",
-        // },
-        // .@"bindbc-imgui" = .{
-        //     .url = "git+https://github.com/BindBC/bindbc-imgui#63cf88e1ab3981794d2e17d2c4a30d1ac340b148",
-        //     .hash = "1220194ac6476adaed11b30299a8abdd593eb7ae6d368bf6832d7fe6a604f12cae4f",
-        // },
         .cimgui = .{
             .url = "git+https://github.com/kassane/cimgui#f5b64afa65549d5e5ca65b003a443030ead23c9b",
             .hash = "1220e6183fb9559dbfafe58d7fab20f1c330bee32342205815aa10553134ff9f9302",
@@ -19,6 +16,14 @@
         .imgui = .{
             .url = "git+https://github.com/ocornut/imgui#5fdcdf7080aade03b30f742dd9369172460fcfd7",
             .hash = "12202af0db41b79a4c7904950269b5e33b7d48f50aae042e334cb8d717a5a2caf48d",
+        },
+        .emsdk = .{
+            .url = "git+https://github.com/emscripten-core/emsdk#0bbae74935d57ff41739648c12cf90b56668398f",
+            .hash = "1220f1340cd871b444021c600661f921f96091ce0815fa43008528f4844cece7e245",
+        },
+        .wasmd = .{
+            .url = "git+https://github.com/kassane/webassembly#800870e68be1518eeffbb2c0814e23b9543a89cb",
+            .hash = "12203c2350903f04a07f746b448abb22824a452e8d81500b2fa11a0c3a5ea896b3f6",
         },
     },
 }

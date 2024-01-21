@@ -5,13 +5,11 @@ import sapp = sokol.app;
 import log = sokol.log;
 import sgapp = sokol.glue;
 
-import std.stdio;
-
 extern (C):
 
 struct ExampleUserData {
     ubyte data;    
-    int[ubyte] map;
+    int[ubyte] map; // need druntime
 }
 
 void init() @safe
@@ -28,14 +26,25 @@ void frame_userdata(scope void* userdata) @trusted
     auto state = cast(ExampleUserData*) userdata;
     
     state.data++;
-    if (state.data % 13 == 0) {
-        state.map[state.data] = state.data * 13 / 3; 
-    }
-    if (state.data % 12 == 0 && state.data % 15 == 0) {
-        state.map.clear();
-    }
     
-    writeln(*state);
+    version(WebAssembly){
+        // TODO support
+    }
+    else
+    {
+        if (state.data % 13 == 0) {
+            state.map[state.data] = state.data * 13 / 3; 
+        }
+        if (state.data % 12 == 0 && state.data % 15 == 0) {
+            state.map.clear();
+        } 
+    }
+    debug {
+        import std.stdio : writeln;
+        try { 
+            writeln(*state);
+        } catch (Exception) {}
+    }
 
     sg.PassAction pass_action = {};
     sg.beginDefaultPass(pass_action, sapp.width(), sapp.height());

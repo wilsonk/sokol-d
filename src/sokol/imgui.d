@@ -2,10 +2,17 @@
 
 module sokol.imgui;
 
-import core.stdc.stdint;
 import core.stdc.stdarg : va_list;
 import sapp = sokol.app;
 import sg = sokol.gfx;
+
+
+version(WebAssembly){
+	alias ImFileHandle = void*;
+}else{
+    import core.stdc.stdio: FILE;
+	alias ImFileHandle = FILE*;
+}
 
 extern (C):
 nothrow:
@@ -1490,17 +1497,6 @@ struct StbTexteditRow
     float ymin;
     float ymax;
     int num_chars;
-}
-
-static if({
-	version(WebAssembly) return false;
-	else version(WASI) return false;
-	else return true;
-}){
-	import core.stdc.stdio: FILE;
-	alias ImFileHandle = FILE*;
-}else{
-	alias ImFileHandle = void*;
 }
 
 struct ImVec1

@@ -169,7 +169,6 @@ pub fn buildLibSokol(b: *Build, options: LibSokolOptions) !*CompileStep {
         csrc_root ++ "sokol_glue.c",
         csrc_root ++ "sokol_debugtext.c",
         csrc_root ++ "sokol_shape.c",
-        csrc_root ++ "sokol_imgui.c",
     };
     for (csources) |csrc| {
         lib.addCSourceFile(.{
@@ -177,7 +176,11 @@ pub fn buildLibSokol(b: *Build, options: LibSokolOptions) !*CompileStep {
             .flags = cflags,
         });
     }
-    const cimgui = buildImgui(b, .{ .target = options.target, .optimize = options.optimize });
+    lib.addCSourceFile(.{
+        .file = .{ .path = csrc_root ++ "sokol_imgui.c" },
+        .flags = cflags,
+    });
+    const cimgui = try buildImgui(b, .{ .target = options.target, .optimize = options.optimize, .emsdk = options.emsdk });
     for (cimgui.root_module.include_dirs.items) |dir| {
         try lib.root_module.include_dirs.append(b.allocator, dir);
     }
@@ -227,6 +230,7 @@ pub fn build(b: *Build) !void {
         "cube",
         "blend",
         "mrt",
+        "imgui",
         "saudio",
         "sgl_context",
         "debugtext_print",
@@ -415,6 +419,7 @@ pub fn ldcBuildStep(b: *Build, options: DCompileStep) !*RunStep {
         try cmds.append("-L-w"); // hide linker warnings
     }
     if (options.target.result.isWasm()) {
+        try cmds.append("--d-version=CarelessAlocation");
         try cmds.append("-L-allow-undefined");
     }
 
@@ -523,6 +528,22 @@ pub fn ldcBuildStep(b: *Build, options: DCompileStep) !*RunStep {
 
     if (options.artifact) |lib_sokol| {
         ldc_exec.addArtifactArg(lib_sokol);
+        var it = lib_sokol.root_module.iterateDependencies(lib_sokol, false);
+        while (it.next()) |item| {
+            for (item.module.link_objects.items) |link_object| {
+                switch (link_object) {
+                    .other_step => |compile_step| {
+                        switch (compile_step.kind) {
+                            .lib => {
+                                ldc_exec.addArtifactArg(compile_step);
+                            },
+                            else => {},
+                        }
+                    },
+                    else => {},
+                }
+            }
+        }
     }
 
     const example_run = b.addSystemCommand(&.{b.pathJoin(&.{ b.install_path, outputDir, options.name })});
@@ -808,7 +829,7 @@ fn emSdkSetupStep(b: *Build, emsdk: *Build.Dependency) !?*Build.Step.Run {
     }
 }
 
-fn buildImgui(b: *Build, options: struct { target: Build.ResolvedTarget, optimize: std.builtin.OptimizeMode }) *CompileStep {
+fn buildImgui(b: *Build, options: LibSokolOptions) !*CompileStep {
     const imgui_cpp = b.dependency("imgui", .{});
     const imgui_cpp_dir = imgui_cpp.path("").getPath(b);
     const cimgui = b.dependency("cimgui", .{});
@@ -821,10 +842,23 @@ fn buildImgui(b: *Build, options: struct { target: Build.ResolvedTarget, optimiz
     });
     if (libimgui.linkage == .static)
         libimgui.pie = true
-    else
+    else if (libimgui.linkage == .static)
         libimgui.root_module.pic = true;
     libimgui.addIncludePath(.{ .path = cimgui_dir });
     libimgui.addIncludePath(.{ .path = imgui_cpp_dir });
+    libimgui.defineCMacro("IMGUI_DISABLE_OBSOLETE_FUNCTIONS", "1");
+    if (libimgui.rootModuleTarget().isWasm()) {
+        // make sure we're building for the wasm32-emscripten target, not wasm32-freestanding
+        if (libimgui.rootModuleTarget().os.tag != .emscripten) {
+            std.log.err("Please build with 'zig build -Dtarget=wasm32-emscripten", .{});
+            return error.Wasm32EmscriptenExpected;
+        }
+        // add the Emscripten system include seach path
+        const emsdk_sysroot = b.pathJoin(&.{ emSdkPath(b, options.emsdk.?), "upstream", "emscripten", "cache", "sysroot" });
+        const include_path = b.pathJoin(&.{ emsdk_sysroot, "include" });
+        libimgui.addSystemIncludePath(.{ .path = include_path });
+        libimgui.defineCMacro("IMGUI_DISABLE_FILE_FUNCTIONS", null);
+    }
     libimgui.addCSourceFiles(.{
         .files = &.{
             b.pathJoin(&.{ cimgui_dir, "cimgui.cpp" }),
@@ -837,17 +871,16 @@ fn buildImgui(b: *Build, options: struct { target: Build.ResolvedTarget, optimiz
         .flags = &.{
             "-Wall",
             "-Wextra",
-            "-Wformat",
             "-fno-rtti",
             "-fno-exceptions",
-            "-Werror",
-            "-DIMGUI_DISABLE_OBSOLETE_FUNCTIONS=1",
+            "-Wno-unused-parameter",
+            "-Wno-missing-field-initializers",
             "-fno-threadsafe-statics",
         },
     });
     libimgui.root_module.sanitize_c = false;
     if (libimgui.rootModuleTarget().os.tag == .windows)
-        libimgui.linkSystemLibrary2("imm32", .{ .use_pkg_config = .no });
+        libimgui.linkSystemLibrary("imm32");
 
     // https://github.com/ziglang/zig/issues/5312
     if (libimgui.rootModuleTarget().abi != .msvc) {

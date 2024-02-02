@@ -254,6 +254,7 @@ pub fn build(b: *Build) !void {
             .zig_cc = if (target.result.isDarwin() and !enable_betterC) false else enable_zigcc,
             .target = target,
             .optimize = optimize,
+            // send ldc2-obj (wasm artifact) to emcc
             .kind = if (target.result.isWasm()) .obj else .exe,
             .emsdk = emsdk,
         });

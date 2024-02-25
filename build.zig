@@ -226,6 +226,7 @@ pub fn build(b: *Build) !void {
         "imgui",
         "saudio",
         "sgl_context",
+        "sgl_points",
         "debugtext_print",
         "user_data", // Need GC for user data [associative array]
     };
@@ -360,10 +361,10 @@ pub fn ldcBuildStep(b: *Build, options: DCompileStep) !*RunStep {
     var objpath: []const u8 = undefined; // needed for wasm build
     if (b.cache_root.path) |path| {
         // immutable state hash
-        objpath = b.pathJoin(&.{ path, "o", &b.cache.hash.peek() });
+        objpath = b.pathJoin(&.{ path, "o", &b.graph.cache.hash.peek() });
         try cmds.append(b.fmt("-od={s}", .{objpath}));
         // mutable state hash (ldc2 cache - llvm-ir2obj)
-        try cmds.append(b.fmt("-cache={s}", .{b.pathJoin(&.{ path, "o", &b.cache.hash.final() })}));
+        try cmds.append(b.fmt("-cache={s}", .{b.pathJoin(&.{ path, "o", &b.graph.cache.hash.final() })}));
     }
     // name object files uniquely (so the files don't collide)
     try cmds.append("-oq");
@@ -722,6 +723,8 @@ pub fn emLinkStep(b: *Build, options: EmLinkOptions) !*Build.Step.Run {
     try emcc_cmd.append(emcc_path);
     if (options.optimize == .Debug) {
         try emcc_cmd.append("-Og");
+        try emcc_cmd.append("-sSAFE_HEAP=1");
+        try emcc_cmd.append("-sSTACK_OVERFLOW_CHECK=1");
     } else {
         try emcc_cmd.append("-sASSERTIONS=0");
         if (options.optimize == .ReleaseSmall) {

@@ -33,6 +33,7 @@ jobs:
             dub build :debugtext_print
             # dub build :cube
             # dub build :blend
+            dub build :imgui
             dub build :triangle
             # dub build :mrt
             dub build :user_data

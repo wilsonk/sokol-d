@@ -27,7 +27,7 @@ static State state;
 void init()
 {
     sg.Desc gfx = {
-        context: sgapp.context(),
+        environment: sgapp.environment,
         logger: {func: &log.slog_func}
     };
     sg.setup(gfx);
@@ -46,7 +46,7 @@ void frame()
     imgui.simgui_new_frame(&imgui_desc);
 
     /*=== UI CODE STARTS HERE ===*/
-    const imgui.ImVec2 window_pos = {0,0};
+    const imgui.ImVec2 window_pos = {10,10};
     const imgui.ImVec2 window_pos_pivot = {0,0};
     const imgui.ImVec2 window_size = {400, 100};
     imgui.igSetNextWindowPos(window_pos, imgui.ImGuiCond_.ImGuiCond_Once, window_pos_pivot);
@@ -58,7 +58,9 @@ void frame()
     imgui.igEnd();
     /*=== UI CODE ENDS HERE ===*/
 
-    sg.beginDefaultPass(state.pass_action, sapp.width(), sapp.height());
+    sg.Pass pass = {action: state.pass_action, swapchain: sgapp.swapchain};
+    sg.beginPass(pass);
+    imgui.simgui_render();
     sg.endPass();
     sg.commit();
 }

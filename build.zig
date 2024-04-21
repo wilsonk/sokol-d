@@ -242,6 +242,7 @@ pub fn build(b: *Build) !void {
                 "-w", // warnings as error
                 // more info: ldc2 -preview=help (list all specs)
                 "-preview=all",
+                "--enable-no-nans-fp-math",
             },
             .d_packages = if (target.result.isWasm()) &[_][]const u8{
                 b.dependency("wasmd", .{}).path("arsd-webassembly").getPath(b),
@@ -841,9 +842,9 @@ fn emSdkSetupStep(b: *Build, emsdk: *Build.Dependency) !?*Build.Step.Run {
 
 fn buildImgui(b: *Build, options: LibSokolOptions) !*CompileStep {
     const imgui_cpp = b.dependency("imgui", .{});
-    const imgui_cpp_dir = imgui_cpp.path("").getPath(b);
+    const imgui_cpp_dir = imgui_cpp.path("");
     const cimgui = b.dependency("cimgui", .{});
-    const cimgui_dir = cimgui.path("").getPath(b);
+    const cimgui_dir = cimgui.path("");
 
     const libimgui = b.addStaticLibrary(.{
         .name = "cimgui",
@@ -854,8 +855,8 @@ fn buildImgui(b: *Build, options: LibSokolOptions) !*CompileStep {
         libimgui.pie = true
     else if (libimgui.linkage == .static)
         libimgui.root_module.pic = true;
-    libimgui.addIncludePath(.{ .path = cimgui_dir });
-    libimgui.addIncludePath(.{ .path = imgui_cpp_dir });
+    libimgui.addIncludePath(.{ .path = cimgui_dir.getPath(b) });
+    libimgui.addIncludePath(.{ .path = imgui_cpp_dir.getPath(b) });
     libimgui.defineCMacro("IMGUI_DISABLE_OBSOLETE_FUNCTIONS", "1");
     if (libimgui.rootModuleTarget().isWasm()) {
         // make sure we're building for the wasm32-emscripten target, not wasm32-freestanding
@@ -870,13 +871,28 @@ fn buildImgui(b: *Build, options: LibSokolOptions) !*CompileStep {
         libimgui.defineCMacro("IMGUI_DISABLE_FILE_FUNCTIONS", null);
     }
     libimgui.addCSourceFiles(.{
+        .root = cimgui_dir,
         .files = &.{
-            b.pathJoin(&.{ cimgui_dir, "cimgui.cpp" }),
-            b.pathJoin(&.{ imgui_cpp_dir, "imgui.cpp" }),
-            b.pathJoin(&.{ imgui_cpp_dir, "imgui_draw.cpp" }),
-            b.pathJoin(&.{ imgui_cpp_dir, "imgui_demo.cpp" }),
-            b.pathJoin(&.{ imgui_cpp_dir, "imgui_widgets.cpp" }),
-            b.pathJoin(&.{ imgui_cpp_dir, "imgui_tables.cpp" }),
+            "cimgui.cpp",
+        },
+        .flags = &.{
+            "-Wall",
+            "-Wextra",
+            "-fno-rtti",
+            "-fno-exceptions",
+            "-Wno-unused-parameter",
+            "-Wno-missing-field-initializers",
+            "-fno-threadsafe-statics",
+        },
+    });
+    libimgui.addCSourceFiles(.{
+        .root = imgui_cpp_dir,
+        .files = &.{
+            "imgui.cpp",
+            "imgui_draw.cpp",
+            "imgui_demo.cpp",
+            "imgui_widgets.cpp",
+            "imgui_tables.cpp",
         },
         .flags = &.{
             "-Wall",

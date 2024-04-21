@@ -182,7 +182,11 @@ pub fn buildLibSokol(b: *Build, options: LibSokolOptions) !*CompileStep {
             .file = .{ .path = csrc_root ++ "sokol_imgui.c" },
             .flags = cflags,
         });
-        const cimgui = try buildImgui(b, .{ .target = options.target, .optimize = options.optimize, .emsdk = options.emsdk });
+        const cimgui = try buildImgui(b, .{
+            .target = options.target,
+            .optimize = options.optimize,
+            .emsdk = options.emsdk,
+        });
         for (cimgui.root_module.include_dirs.items) |dir| {
             try lib.root_module.include_dirs.append(b.allocator, dir);
         }
@@ -246,12 +250,8 @@ pub fn build(b: *Build) !void {
             .dflags = &[_][]const u8{
                 "-w", // warnings as error
                 // more info: ldc2 -preview=help (list all specs)
-                "-preview=all",
-                "--enable-no-nans-fp-math",
+                "-preview=dip1000",
             },
-            .d_packages = if (target.result.isWasm()) &[_][]const u8{
-                b.dependency("wasmd", .{}).path("arsd-webassembly").getPath(b),
-            } else null,
             // fixme: https://github.com/kassane/sokol-d/issues/1 - betterC works on darwin
             .zig_cc = if (target.result.isDarwin() and !enable_betterC) false else enable_zigcc,
             .target = target,

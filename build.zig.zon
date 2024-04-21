@@ -18,12 +18,8 @@
             .hash = "12202af0db41b79a4c7904950269b5e33b7d48f50aae042e334cb8d717a5a2caf48d",
         },
         .emsdk = .{
-            .url = "git+https://github.com/emscripten-core/emsdk#c18280c8f3f8f088b4337f0f6a5fdb2be0d67179",
-            .hash = "12203d61e8947f25993a86b4d73e2d91b4c1d96f1aa07c581b7dffba7cb5ca91bc35",
-        },
-        .wasmd = .{
-            .url = "git+https://github.com/kassane/wasmd#067e21e29aea24ec936d6c6b859f7c9a79894f78",
-            .hash = "122006f8e097d5bd627f26d2aa3b397d92b400c786f13396c47afed66fed1e8ef2c1",
+            .url = "git+https://github.com/emscripten-core/emsdk#3.1.57",
+            .hash = "12205971cb2c23c3f6bf401aa921e4755f43f67628f4689242111f87a2e32ef5f6ab",
         },
     },
 }

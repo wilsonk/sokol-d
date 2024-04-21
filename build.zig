@@ -176,22 +176,21 @@ pub fn buildLibSokol(b: *Build, options: LibSokolOptions) !*CompileStep {
             .flags = cflags,
         });
     }
-    // FIXME: missing 'assert.h'
-    if (!lib.rootModuleTarget().isWasm()) {
-        lib.addCSourceFile(.{
-            .file = .{ .path = csrc_root ++ "sokol_imgui.c" },
-            .flags = cflags,
-        });
-        const cimgui = try buildImgui(b, .{
-            .target = options.target,
-            .optimize = options.optimize,
-            .emsdk = options.emsdk,
-        });
-        for (cimgui.root_module.include_dirs.items) |dir| {
-            try lib.root_module.include_dirs.append(b.allocator, dir);
-        }
-        lib.linkLibrary(cimgui);
+
+    lib.addCSourceFile(.{
+        .file = .{ .path = csrc_root ++ "sokol_imgui.c" },
+        .flags = cflags,
+    });
+    const cimgui = try buildImgui(b, .{
+        .target = options.target,
+        .optimize = options.optimize,
+        .emsdk = options.emsdk,
+    });
+    for (cimgui.root_module.include_dirs.items) |dir| {
+        try lib.root_module.include_dirs.append(b.allocator, dir);
     }
+    lib.linkLibrary(cimgui);
+
     if (sharedlib)
         b.installArtifact(lib);
     return lib;
@@ -240,8 +239,6 @@ pub fn build(b: *Build) !void {
     };
 
     inline for (examples) |example| {
-        if (lib_sokol.rootModuleTarget().isWasm() and std.mem.eql(u8, example, "imgui"))
-            return; // FIXME: cimgui need 'assert.h'.
         const ldc = try ldcBuildStep(b, .{
             .name = example,
             .artifact = lib_sokol,
@@ -519,14 +516,8 @@ pub fn ldcBuildStep(b: *Build, options: DCompileStep) !*RunStep {
 
     try cmds.append(b.fmt("-mtriple={s}", .{mtriple}));
 
-    // cpu model (e.g. "baseline")
-    if (options.target.query.isNative()) {
-        const cpu_model = if (options.target.result.isDarwin())
-            builtin.cpu.model.llvm_name orelse "generic"
-        else
-            builtin.cpu.model.name;
-        try cmds.append(b.fmt("-mcpu={s}", .{cpu_model}));
-    }
+    const cpu_model = options.target.result.cpu.model.llvm_name orelse "generic";
+    try cmds.append(b.fmt("-mcpu={s}", .{cpu_model}));
 
     const outputDir = switch (options.kind) {
         .lib => "lib",
